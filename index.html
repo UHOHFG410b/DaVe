@@ -2,41 +2,42 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Projekt Abschlussbericht - BPMN</title>
+  <title>BPMN Projektbericht</title>
   <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/diagram-js.css" />
   <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #canvas { 
-      height: 80vh; /* Nutzt 80% der Bildschirmhöhe */
-      width: 100%; 
-      border: 1px solid #ccc; 
-      border-radius: 8px;
-      background-color: #fdfdfd;
-    }
+    #canvas { height: 500px; width: 100%; border: 1px solid #ccc; background: #fafafa; }
+    .error-msg { color: red; padding: 20px; font-family: sans-serif; }
   </style>
 </head>
 <body>
-  <h2>Interaktiver Projektprozess</h2>
   <div id="canvas"></div>
-
   <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
   <script>
     var viewer = new BpmnJS({ container: '#canvas' });
 
-    // Pfad zu deiner Datei auf GitHub (muss im gleichen Ordner liegen)
-    fetch('Gesamt - Wein mit Genossenschaft (Kopie).bpmn')
-      .then(response => response.text())
-      .then(xml => {
+    // Prüfe hier EXAKT den Namen deiner Datei auf GitHub!
+    var dateiName = 'prozess.bpmn'; 
+
+    fetch(dateiName)
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('Die Datei "' + dateiName + '" wurde nicht gefunden. (Status: ' + response.status + ')');
+        }
+        return response.text();
+      })
+      .then(function(xml) {
         viewer.importXML(xml, function(err) {
-          if (!err) {
-            // Dies löst dein Problem mit dem "halben Diagramm":
-            var canvas = viewer.get('canvas');
-            canvas.zoom('fit-viewport', 'auto'); 
+          if (err) {
+            document.body.innerHTML += '<div class="error-msg">Fehler beim Einlesen des BPMN-Codes: ' + err + '</div>';
+          } else {
+            viewer.get('canvas').zoom('fit-viewport');
           }
         });
       })
-      .catch(err => console.error('Ladefehler:', err));
+      .catch(function(err) {
+        document.body.innerHTML += '<div class="error-msg">Ladefehler: ' + err.message + '</div>';
+      });
   </script>
 </body>
 </html>
