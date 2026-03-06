@@ -13,16 +13,31 @@
   <h2>Unser Projektprozess (Interaktiv)</h2>
   <div id="canvas"></div>
 
-  <script src="https://unpkg.com/bpmn-js/dist/bpmn-viewer.development.js"></script>
-  <script>
-    var viewer = new BpmnJS({ container: '#canvas' });
-    // HIER: Name deiner Datei anpassen!
-    fetch('Gesamt - Wein mit Genossenschaft (Kopie).bpmn')
-      .then(response => response.text())
-      .then(xml => {
-        viewer.importXML(xml);
-      })
-      .catch(err => console.error('Fehler beim Laden:', err));
-  </script>
+  <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
+<script>
+  // Wir nutzen den "NavigatedViewer", der Zoom & Verschieben per Maus erlaubt
+  var viewer = new BpmnJS({ 
+    container: '#canvas',
+    keyboard: { bindTo: window } // Erlaubt Steuerung mit Tastatur
+  });
+
+  var dateiName = 'prozess.bpmn'; 
+
+  fetch(dateiName)
+    .then(response => response.text())
+    .then(xml => {
+      viewer.importXML(xml, function(err) {
+        if (err) {
+          console.error('Fehler:', err);
+        } else {
+          // DER TRICK FÜR DIE SICHTBARKEIT:
+          // Zentriert das Diagramm und zoomt so, dass alles reinpasst
+          var canvas = viewer.get('canvas');
+          canvas.zoom('fit-viewport');
+        }
+      });
+    })
+    .catch(err => console.error(err));
+</script>
 </body>
 </html>
