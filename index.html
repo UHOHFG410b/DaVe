@@ -14,50 +14,60 @@
   <div id="canvas"></div>
   <div id="details"><h3>Attribute</h3><p>Klicke ein Element an...</p></div>
 
- <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
+<script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
 <script>
   var viewer = new BpmnJS({ container: '#canvas' });
 
-  // Falls du die Datei umbenannt hast, hier anpassen:
-  var dateiName = 'QZBW_BIOZBW - Einzelzertifizierung - mit Genossenschaft - Alle Pools.bpmn'; 
+  fetch('prozess.bpmn').then(r => r.text()).then(xml => {
+    viewer.importXML(xml).then(function() {
+      viewer.get('canvas').zoom('fit-viewport');
 
-  fetch(dateiName)
-    .then(r => r.text())
-    .then(xml => {
-      // Wir nutzen die moderne Promise-Variante von importXML
-      viewer.importXML(xml).then(function() {
+      viewer.on('element.click', function(e) {
+        var bo = e.element.businessObject;
+        var details = document.getElementById('details');
         
-        var canvas = viewer.get('canvas');
-        
-        // 1. Zuerst das Diagramm auf Standard-Zoom setzen
-        canvas.zoom('fit-viewport', 'auto');
-        
-        // 2. Ein kleiner Trick: Falls es noch verschoben ist, 
-        // zentrieren wir es nach 200ms nochmal sicherheitshalber
-        setTimeout(function() {
-          canvas.zoom('fit-viewport', 'auto');
-        }, 200);
+        // Titel des Elements
+        var html = '<h3>' + (bo.name || 'Element') + '</h3>';
+        var hasContent = false;
 
-        // Klick-Event für deine Attribute (wie zuvor gewünscht)
-        viewer.on('element.click', function(e) {
-          var bo = e.element.businessObject;
-          var details = document.getElementById('details');
-          if (details) {
-            var content = '<h3>' + (bo.name || 'Element') + '</h3>';
-            // Zeigt alle Attribute an, die in Signavio befüllt wurden
-            if (bo.documentation && bo.documentation[0]) {
-               content += '<p><strong>Doku:</strong> ' + bo.documentation[0].text + '</p>';
+        // 1. Suche in extensionElements nach Signavio-Metadaten
+        if (bo.extensionElements && bo.extensionElements.values) {
+          bo.extensionElements.values.forEach(function(ext) {
+            // Wir suchen speziell nach signavio:signavioMetaData
+            if (ext.$type === 'signavio:signavioMetaData' && ext.metaValue) {
+              
+              // Wir filtern unnötige Metadaten wie Farben oder IDs aus
+              var key = ext.metaKey;
+              var val = ext.metaValue;
+
+              // Nur anzeigen, wenn es kein technischer Wert (wie Farben #...) 
+              // und nicht leer (wie [""]) ist
+              if (val.length > 5 && !val.startsWith('#') && key !== 'revisionid') {
+                
+                // Signavio packt Texte oft in ["..."] - das säubern wir hier
+                var cleanVal = val.replace(/^\["| "\]$/g, '').replace(/\\"/g, '"');
+                
+                // Schöne Namen für die Keys vergeben
+                var label = key.replace('meta-dctdescription', 'Beschreibung');
+                
+                html += '<div style="margin-bottom:15px;">';
+                html += '<strong style="color:#0055aa; font-size:0.8em; text-transform:uppercase;">' + label + '</strong><br>';
+                html += '<div style="background:white; padding:8px; border-radius:4px; border:1px solid #ddd;">' + cleanVal + '</div>';
+                html += '</div>';
+                hasContent = true;
+              }
             }
-            // Hier kannst du weitere Attribute auslesen
-            details.innerHTML = content;
-          }
-        });
+          });
+        }
 
-      }).catch(function(err) {
-        console.error('Fehler beim Rendern:', err);
+        if (!hasContent) {
+          html += '<p style="color:#999; font-style:italic;">Keine zusätzlichen Beschreibungen hinterlegt.</p>';
+        }
+
+        details.innerHTML = html;
       });
-    })
-    .catch(err => console.error('Ladefehler:', err));
+    });
+  }).catch(err => console.error(err));
 </script>
 </body>
 </html>
