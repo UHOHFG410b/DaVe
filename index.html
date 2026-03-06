@@ -14,31 +14,50 @@
   <div id="canvas"></div>
   <div id="details"><h3>Attribute</h3><p>Klicke ein Element an...</p></div>
 
-  <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
-  <script>
-    var viewer = new BpmnJS({ container: '#canvas' });
+ <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
+<script>
+  var viewer = new BpmnJS({ container: '#canvas' });
 
-    fetch('prozess2.bpmn').then(r => r.text()).then(xml => {
-      viewer.importXML(xml, function() {
-        viewer.get('canvas').zoom('fit-viewport');
+  // Falls du die Datei umbenannt hast, hier anpassen:
+  var dateiName = 'prozess2.bpmn'; 
+
+  fetch(dateiName)
+    .then(r => r.text())
+    .then(xml => {
+      // Wir nutzen die moderne Promise-Variante von importXML
+      viewer.importXML(xml).then(function() {
         
-        // INTERAKTION: Klick-Event registrieren
-        var eventBus = viewer.get('eventBus');
-        eventBus.on('element.click', function(e) {
-          var element = e.element;
-          var businessObject = element.businessObject;
-          var html = '<h3>' + (businessObject.name || 'Unbenannt') + '</h3>';
-          
-          // Alle Attribute auslesen
-          for (var prop in businessObject) {
-            if (typeof businessObject[prop] === 'string' && businessObject[prop].length > 1) {
-              html += '<div class="prop"><div class="label">' + prop + '</div>' + businessObject[prop] + '</div>';
+        var canvas = viewer.get('canvas');
+        
+        // 1. Zuerst das Diagramm auf Standard-Zoom setzen
+        canvas.zoom('fit-viewport', 'auto');
+        
+        // 2. Ein kleiner Trick: Falls es noch verschoben ist, 
+        // zentrieren wir es nach 200ms nochmal sicherheitshalber
+        setTimeout(function() {
+          canvas.zoom('fit-viewport', 'auto');
+        }, 200);
+
+        // Klick-Event für deine Attribute (wie zuvor gewünscht)
+        viewer.on('element.click', function(e) {
+          var bo = e.element.businessObject;
+          var details = document.getElementById('details');
+          if (details) {
+            var content = '<h3>' + (bo.name || 'Element') + '</h3>';
+            // Zeigt alle Attribute an, die in Signavio befüllt wurden
+            if (bo.documentation && bo.documentation[0]) {
+               content += '<p><strong>Doku:</strong> ' + bo.documentation[0].text + '</p>';
             }
+            // Hier kannst du weitere Attribute auslesen
+            details.innerHTML = content;
           }
-          document.getElementById('details').innerHTML = html;
         });
+
+      }).catch(function(err) {
+        console.error('Fehler beim Rendern:', err);
       });
-    });
-  </script>
+    })
+    .catch(err => console.error('Ladefehler:', err));
+</script>
 </body>
 </html>
