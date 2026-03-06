@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Interaktives BPMN Modell</title>
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/diagram-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
+  <style>
+    #canvas { height: 600px; width: 100%; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h2>Unser Projektprozess (Interaktiv)</h2>
+  <div id="canvas"></div>
+
+  <script src="https://unpkg.com/bpmn-js/dist/bpmn-viewer.development.js"></script>
+  <script>
+    var viewer = new BpmnJS({ container: '#canvas' });
+    // HIER: Name deiner Datei anpassen!
+    fetch('Gesamt - Wein mit Genossenschaft (Kopie).bpmn')
+      .then(response => response.text())
+      .then(xml => {
+        viewer.importXML(xml);
+      })
+      .catch(err => console.error('Fehler beim Laden:', err));
+  </script>
+</body>
+</html>
