@@ -2,72 +2,111 @@
 <html>
 <head>
   <meta charset="UTF-8" />
+  <title>DaVe - Datenflussanalyse</title>
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/diagram-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
   <style>
-    body { display: flex; font-family: sans-serif; margin: 0; height: 100vh; }
-    #canvas { flex: 1; border-right: 1px solid #ccc; }
-    #details { width: 300px; padding: 20px; background: #f4f4f4; overflow-y: auto; }
-    .prop { margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-    .label { font-weight: bold; font-size: 0.8em; color: #666; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #f4f7f9; }
+    header { background: #003056; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .main-container { display: flex; flex: 1; overflow: hidden; }
+    #canvas { flex: 1; background: white; }
+    #sidebar { width: 350px; background: #fff; border-left: 1px solid #ccc; padding: 20px; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.05); }
+    .btn-home { background: #00a3da; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-home:hover { background: #0082ae; }
+    .info-box { background: #e7f3ff; border-left: 4px solid #00a3da; padding: 10px; margin-top: 20px; font-size: 0.9em; }
+    h3 { margin-top: 0; color: #003056; }
+    .attribute-item { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .attribute-label { font-size: 0.75em; font-weight: bold; color: #888; text-transform: uppercase; }
   </style>
 </head>
 <body>
+
+<header>
+  <div><strong>Projekt Abschlussbericht</strong> | <span id="current-model">Hauptübersicht</span></div>
+  <button class="btn-home" onclick="loadDiagram('dave_gesamt.bpmn', 'Hauptübersicht')">Zurück zur Gesamtübersicht</button>
+</header>
+
+<div class="main-container">
   <div id="canvas"></div>
-  <div id="details"><h3>Attribute</h3><p>Klicke ein Element an...</p></div>
+  <div id="sidebar">
+    <div id="details">
+      <h3>Willkommen</h3>
+      <p>Klicken Sie auf ein Element, um Details zu sehen.</p>
+      <div class="info-box">
+        <strong>Tipp:</strong> Aktivitäten mit einem [+] Symbol führen direkt in die Detailansicht.
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
 <script>
   var viewer = new BpmnJS({ container: '#canvas' });
+  var sidebar = document.getElementById('details');
 
-  fetch('QZBW_BIOZBW - Einzelzertifizierung - mit Genossenschaft - Alle Pools.bpmn').then(r => r.text()).then(xml => {
-    viewer.importXML(xml).then(function() {
+  // Kern-Funktion zum Laden und Austauschen der Diagramme
+  async function loadDiagram(file, label) {
+    try {
+      const response = await fetch(file + '?v=' + new Date().getTime());
+      if (!response.ok) throw new Error('Datei nicht gefunden');
+      const xml = await response.text();
+      
+      await viewer.importXML(xml);
       viewer.get('canvas').zoom('fit-viewport');
+      document.getElementById('current-model').innerText = label;
+      sidebar.innerHTML = '<h3>' + label + '</h3><p>Modell erfolgreich geladen. Klicken Sie auf ein Element für Details.</p>';
+    } catch (err) {
+      sidebar.innerHTML = '<p style="color:red">Fehler beim Laden von ' + file + ': ' + err.message + '</p>';
+    }
+  }
 
-      viewer.on('element.click', function(e) {
-        var bo = e.element.businessObject;
-        var details = document.getElementById('details');
-        
-        // Titel des Elements
-        var html = '<h3>' + (bo.name || 'Element') + '</h3>';
-        var hasContent = false;
+  // Event-Bus für Klicks
+  viewer.on('element.click', function(e) {
+    var element = e.element;
+    var bo = element.businessObject;
+    var name = bo.name || 'Unbenanntes Element';
 
-        // 1. Suche in extensionElements nach Signavio-Metadaten
-        if (bo.extensionElements && bo.extensionElements.values) {
-          bo.extensionElements.values.forEach(function(ext) {
-            // Wir suchen speziell nach signavio:signavioMetaData
-            if (ext.$type === 'signavio:signavioMetaData' && ext.metaValue) {
-              
-              // Wir filtern unnötige Metadaten wie Farben oder IDs aus
-              var key = ext.metaKey;
-              var val = ext.metaValue;
+    // 1. Logik für den Drill-Down (Wechsel des Diagramms)
+    // Hier verknüpfst du den Namen im BPMN mit der Datei
+    const drillDownMap = {
+      'Prozess 1': 'prozess1.bpmn',
+      'Prozess 2': 'prozess2.bpmn',
+      'Prozess 3': 'prozess3.bpmn',
+      'Prozess 4': 'prozess4.bpmn',
+      'Prozess 5': 'prozess5.bpmn',
+      'Prozess 6': 'prozess6.bpmn',
+      'Prozess 7': 'prozess7.bpmn',
+      'Prozess 8': 'prozess8.bpmn'
+    };
 
-              // Nur anzeigen, wenn es kein technischer Wert (wie Farben #...) 
-              // und nicht leer (wie [""]) ist
-              if (val.length > 5 && !val.startsWith('#') && key !== 'revisionid') {
-                
-                // Signavio packt Texte oft in ["..."] - das säubern wir hier
-                var cleanVal = val.replace(/^\["| "\]$/g, '').replace(/\\"/g, '"');
-                
-                // Schöne Namen für die Keys vergeben
-                var label = key.replace('meta-dctdescription', 'Beschreibung');
-                
-                html += '<div style="margin-bottom:15px;">';
-                html += '<strong style="color:#0055aa; font-size:0.8em; text-transform:uppercase;">' + label + '</strong><br>';
-                html += '<div style="background:white; padding:8px; border-radius:4px; border:1px solid #ddd;">' + cleanVal + '</div>';
-                html += '</div>';
-                hasContent = true;
-              }
-            }
-          });
+    if (drillDownMap[name]) {
+      loadDiagram(drillDownMap[name], name);
+      return;
+    }
+
+    // 2. Logik für die Anzeige der Signavio-Attribute
+    var html = '<h3>Details: ' + name + '</h3>';
+    var foundAttr = false;
+
+    if (bo.extensionElements && bo.extensionElements.values) {
+      bo.extensionElements.values.forEach(ext => {
+        if (ext.$type === 'signavio:signavioMetaData' && ext.metaValue && ext.metaValue.length > 5) {
+          if (!ext.metaValue.startsWith('#') && ext.metaKey !== 'revisionid') {
+            var cleanVal = ext.metaValue.replace(/^\["| "\]$/g, '').replace(/\\"/g, '"');
+            html += '<div class="attribute-item"><div class="attribute-label">' + ext.metaKey + '</div>' + cleanVal + '</div>';
+            foundAttr = true;
+          }
         }
-
-        if (!hasContent) {
-          html += '<p style="color:#999; font-style:italic;">Keine zusätzlichen Beschreibungen hinterlegt.</p>';
-        }
-
-        details.innerHTML = html;
       });
-    });
-  }).catch(err => console.error(err));
+    }
+    
+    if (!foundAttr) html += '<p>Keine zusätzlichen Attribute vorhanden.</p>';
+    sidebar.innerHTML = html;
+  });
+
+  // Start mit der Gesamtübersicht
+  loadDiagram('dave_gesamt.bpmn', 'Hauptübersicht');
 </script>
+
 </body>
 </html>
