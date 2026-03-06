@@ -2,42 +2,43 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>BPMN Projektbericht</title>
-  <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/diagram-js.css" />
-  <link rel="stylesheet" href="https://unpkg.com/bpmn-js/dist/assets/bpmn-font/css/bpmn.css" />
   <style>
-    #canvas { height: 500px; width: 100%; border: 1px solid #ccc; background: #fafafa; }
-    .error-msg { color: red; padding: 20px; font-family: sans-serif; }
+    body { display: flex; font-family: sans-serif; margin: 0; height: 100vh; }
+    #canvas { flex: 1; border-right: 1px solid #ccc; }
+    #details { width: 300px; padding: 20px; background: #f4f4f4; overflow-y: auto; }
+    .prop { margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+    .label { font-weight: bold; font-size: 0.8em; color: #666; }
   </style>
 </head>
 <body>
   <div id="canvas"></div>
+  <div id="details"><h3>Attribute</h3><p>Klicke ein Element an...</p></div>
+
   <script src="https://unpkg.com/bpmn-js/dist/bpmn-navigated-viewer.development.js"></script>
   <script>
     var viewer = new BpmnJS({ container: '#canvas' });
 
-    // Prüfe hier EXAKT den Namen deiner Datei auf GitHub!
-    var dateiName = 'prozess.bpmn'; 
-
-    fetch(dateiName)
-      .then(function(response) {
-        if (!response.ok) {
-          throw new Error('Die Datei "' + dateiName + '" wurde nicht gefunden. (Status: ' + response.status + ')');
-        }
-        return response.text();
-      })
-      .then(function(xml) {
-        viewer.importXML(xml, function(err) {
-          if (err) {
-            document.body.innerHTML += '<div class="error-msg">Fehler beim Einlesen des BPMN-Codes: ' + err + '</div>';
-          } else {
-            viewer.get('canvas').zoom('fit-viewport');
+    fetch('prozess.bpmn').then(r => r.text()).then(xml => {
+      viewer.importXML(xml, function() {
+        viewer.get('canvas').zoom('fit-viewport');
+        
+        // INTERAKTION: Klick-Event registrieren
+        var eventBus = viewer.get('eventBus');
+        eventBus.on('element.click', function(e) {
+          var element = e.element;
+          var businessObject = element.businessObject;
+          var html = '<h3>' + (businessObject.name || 'Unbenannt') + '</h3>';
+          
+          // Alle Attribute auslesen
+          for (var prop in businessObject) {
+            if (typeof businessObject[prop] === 'string' && businessObject[prop].length > 1) {
+              html += '<div class="prop"><div class="label">' + prop + '</div>' + businessObject[prop] + '</div>';
+            }
           }
+          document.getElementById('details').innerHTML = html;
         });
-      })
-      .catch(function(err) {
-        document.body.innerHTML += '<div class="error-msg">Ladefehler: ' + err.message + '</div>';
       });
+    });
   </script>
 </body>
 </html>
